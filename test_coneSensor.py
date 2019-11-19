@@ -12,7 +12,7 @@ waypoints = [(1,0), (-1,0), (0,-1)]
 waypoints2 = [(1,1), (-1,1), (-1,-1), (1,-1)]
 
 # for obj in objects:
-#     print(obj.gps_coordinates)
+#     print(obj.local_NED_coordinates)
 
 # sensor = ConeTypeSensor(plane)
 geoSensor = GeoFenceSensor(plane, waypoints2, range=3.0)

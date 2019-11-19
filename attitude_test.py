@@ -9,6 +9,9 @@ import math
 from ConeTypeSensor import ConeTypeSensor
 from GeoFenceSensor import GeoFenceSensor
 from PhysicalObject import PhysicalObject
+from CameraSensor import CameraSensor
+
+from geometric_helper_functions import *
 
 # home coordinates
 home_lat = -35.359272
@@ -169,6 +172,37 @@ def to_quaternion(roll = 0.0, pitch = 0.0, yaw = 0.0):
 
     return [w, x, y, z]
 
+def send_position_target(y_vel):
+    # SET_POSITION_TARGET_LOCAL_NED
+    msg = vehicle1.message_factory.set_position_target_local_ned_encode(
+        0, # time_boot_ms
+        1, # Target system
+        1, # Target component
+        20, # MAV_FRAME_LOCAL_FRD
+        0b1111011110110000, # POSITION_TARGET_TYPEMASK, ignore everything except vy
+        0, # x
+        0, # y
+        0, # z
+        0, # vy
+        0, # vx
+        y_vel, # vy
+        0, # ax
+        0, # ay
+        0, # az
+        0, # yaw setpoint
+        0 # yaw rate setpoint
+    )
+    vehicle1.send_mavlink(msg)
+
+
+def set_position(y_vel, duration):
+    send_position_target(y_vel)
+    start = time.time()
+    while time.time() - start < duration:
+        send_position_target(y_vel)
+        time.sleep(0.1)
+    # Reset attitude, or it will persist for 1s more due to the timeout
+    send_position_target(0)
 
 
 # Connect to the vehicle1.
@@ -176,18 +210,21 @@ print("Connecting to vehicle1 on: %s" % (connection_string,))
 vehicle1 = connect(connection_string, wait_ready=True)
 
 # Setup sensors
-sensor = ConeTypeSensor(vehicle1)
-geoSensor = GeoFenceSensor(vehicle1, geoFenceWaypoints)
-# sensor.updateReadings(objects)
-vehicle1.gps_coordinates = Point(vehicle1.location.global_relative_frame.lat,  vehicle1.location.global_relative_frame.lon) # makes testing without SITL easier
-geoSensor.update_readings()
+# sensor = ConeTypeSensor(vehicle1)
+# geoSensor = GeoFenceSensor(vehicle1, geoFenceWaypoints, range=0.001)
+# cameraSensor = CameraSensor(vehicle1, range=0.01)
+# # sensor.updateReadings(objects)
+# vehicle1.local_NED_coordinates = Point(vehicle1.location.local_frame.east,  vehicle1.location.local_frame.north) # makes testing without SITL easier
+# geoSensor.update_readings()
 
-@vehicle1.on_attribute('location')   
-def decorated_mode_callback(self, attr_name, value):
-    # sensor.updateReadings(objects)
-    vehicle1.gps_coordinates = Point(vehicle1.location.global_relative_frame.lat,  vehicle1.location.global_relative_frame.lon) # makes testing without SITL easier
-    print(vehicle1.gps_coordinates)
-    geoSensor.update_readings()
+# @vehicle1.on_attribute('location')   
+# def decorated_mode_callback(self, attr_name, value):
+#     # sensor.updateReadings(objects)
+#     vehicle1.local_NED_coordinates = Point(vehicle1.location.local_frame.east,  vehicle1.location.local_frame.north) # makes testing without SITL easier
+#     print(vehicle1.local_NED_coordinates)
+#     # print(geoSensor.update_readings())
+#     cameraSensor.update_readings([])
+#     # print(geoSensor.get_normalized_readings())
     
 # Take off, locks untill altitude is reached 
 arm_and_takeoff(10.0)
@@ -200,11 +237,14 @@ vehicle1.mode = VehicleMode("GUIDED")
 
 # Uncomment the lines below for testing roll angle and yaw rate.
 # Make sure that there is enough space for testing this.
-
+print(xy_to_latlon((200, 0), (-35.36, 149.16)))
 # set_attitude(roll_angle = 1, thrust = 0.5, duration = 3)
-set_attitude(yaw_rate = 30, thrust = 0.5, duration = 3)
-set_attitude(yaw_rate = -30, thrust = 0.5, duration = 3)
+# set_attitude(roll_angle = 30, thrust = 0.1, duration = 30)
+# set_attitude(yaw_rate = -30, thrust = 0.5, duration = 3)
+print(vehicle1.capabilities.set_attitude_target)
 
+print(vehicle1.capabilities.set_altitude_target_global_int)
+print(vehicle1.capabilities.set_attitude_target_local_ned)
 # Move the drone forward and backward.
 # Note that it will be in front of original position due to inertia.
 # print("Move forward")

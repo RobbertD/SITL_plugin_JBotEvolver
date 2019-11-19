@@ -10,15 +10,15 @@ class ConeTypeSensor:
     """
 
     def __init__(self, owner, range=1.0):
-        self.readings = [range]*4   # readings for the 4 directions relative to the plane (1=forward, 2=right, 3=back, 4=left)
+        self.readings = [0]*4   # readings for the 4 directions relative to the plane (1=forward, 2=right, 3=back, 4=left)
         self.range = range
         self.objects = []
         self.owner  = owner
 
 
-    def update_readings(self, objects):
+    def update_readings(self, objects, inversed=True):
         self.objects = objects
-        for obj in self.objects: (obj.distance, obj.angle) = self.calc_distance_and_angle(obj.gps_coordinates)
+        for obj in self.objects: (obj.distance, obj.angle) = self.calc_distance_and_angle(obj.local_NED_coordinates)
 
         temp = []
         temp.append(list(filter(lambda x: x.angle <= 135 and x.angle >= 45, self.objects ))) # forward
@@ -28,15 +28,20 @@ class ConeTypeSensor:
 
         for i,t in enumerate(temp):
             if not t: # empty list, default to max range
-                self.readings[i] = self.range
+                r = self.range
             else: # find closest physical object in list
-                self.readings[i] = min(t, key= lambda x: x.distance).distance
+                closest = min(t, key= lambda x: x.distance).distance
+                r = closest if closest<self.range else self.range
+            self.readings[i] = r/self.range
 
-        print(self.readings)  
+        if inversed:
+            self.readings = [(r-1) * -1 for r in self.readings]
+
+        return self.readings
 
     def calc_distance_and_angle(self, p):
         # transform to local coordinates
-        p_local = affine_transform(p, [1,0,0,1, -self.owner.gps_coordinates.x, -self.owner.gps_coordinates.y])
+        p_local = affine_transform(p, [1,0,0,1, -self.owner.local_NED_coordinates.x, -self.owner.local_NED_coordinates.y])
         # convert to polar coordinates
         (distance, angle) = cmath.polar(complex(p_local.x, p_local.y)) # angle is in radians
         
@@ -56,8 +61,6 @@ class ConeTypeSensor:
         
         return (distance, angle)
 
-    def get_normalized_readings(self):
-        return [r/self.range for r in self.readings]
 
 
             

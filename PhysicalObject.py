@@ -6,11 +6,11 @@ class PhysicalObject:
     # i = 12345
 
     def __init__(self, objType, lat, lon):
-        self.gps_coordinates = Point(lat, lon)
+        self.local_NED_coordinates = Point(lat, lon)
         self.objType = objType
         self.heading = 0
-        self.angle = None
-        self.distance = None
+        self.angle = None # angle that the PysicalObject has relative to the plane
+        self.distance = None # distance to the plane
 
 
         
