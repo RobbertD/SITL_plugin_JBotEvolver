@@ -20,8 +20,8 @@ class MyVehicle(Vehicle):
 
         # Setup sensors
         print('Setting up sensors...')
-        self.geo_sensor = GeoFenceSensor(self, range=20)
-        self.target_sensor = ConeTypeSensor(self, range=100)
+        self.geo_sensor = GeoFenceSensor(self, range=200)
+        self.target_sensor = ConeTypeSensor(self, range=500)
         self.cameraSensor = CameraSensor(self, range=5)
         self.target_seen = False
 
@@ -42,8 +42,8 @@ class MyVehicle(Vehicle):
         def decorated_mode_callback(self, attr_name, value):
             # update relative gps-coordinates
             # TODO is needed?
-            if self.location.local_frame.east is not None:
-                self.local_NED_coordinates = Point(self.location.local_frame.east,  self.location.local_frame.north) # makes testing without SITL easier
+            # if self.location.local_frame.east is not None:
+            #     self.local_NED_coordinates = Point(self.location.local_frame.east,  self.location.local_frame.north) # makes testing without SITL easier
             
             if self.geo_sensor.points:
                 self.geo_sensor.update_readings()
@@ -268,7 +268,6 @@ class MyVehicle(Vehicle):
             self.channels.overrides['1'] = int(pwm)
             time.sleep(0.01)
 
-
     def set_environment(self, env):
         self.environment = env
 
@@ -278,7 +277,12 @@ class MyVehicle(Vehicle):
     def reset(self):
         self.seen_targets = []
         self.initial_heading = self.heading
+        # set the home location
         self.home_location = LocationGlobal(self.location.global_frame.lat,
                                             self.location.global_frame.lon,
                                             584.21)
+        # give the simulation some time to send and receive the mavlink message
+        time.sleep(1)
+        # update the home loc on dronekits side
+        self.get_home_loc()
         self.geo_sensor.reset_FLU_geo_fence()  

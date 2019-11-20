@@ -32,10 +32,14 @@ class GeoFenceSensor(ConeTypeSensor):
 
         # convert list of points to list of linestrings
         self.to_LineString(self.points)
+
+        # print('Geofence set with the following coordinates: \n{} '.format(waypoints))
         
     def reset_FLU_geo_fence(self):
         # assuming home_location is reset right before
         NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), self.owner.initial_heading, LocationLocal(0,0,0)) for p in self.points]
+        latlon_geofence = [NED_to_latlon(g, self.owner.location.global_frame) for g in NED_geofence]
+        print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(latlon_geofence[0], latlon_geofence[1], latlon_geofence[2], latlon_geofence[3]))
         NED_geofence = [(p.east, p.north) for p in NED_geofence]
         self.set_geo_fence(NED_geofence)
 
@@ -66,7 +70,7 @@ class GeoFenceSensor(ConeTypeSensor):
         for line in self.lines:
             # add the closest point in every line to the object list
             p1, p2 = nearest_points(line, owner_loc)
-            self.objects.append(PhysicalObject('FencePoint', p1.x, p1.y))
+            self.objects.append(LocationLocal(north=p1.y, east=p1.x, down=0))
 
             # check if any of the sliceLineStrings intersect with the line
             for s in sliceLineStrings:
@@ -74,7 +78,7 @@ class GeoFenceSensor(ConeTypeSensor):
                 
                 if intersect:
                     # only 1 intersect possible between 2 lines
-                    self.objects.append(PhysicalObject('FencePoint', intersect.x, intersect.y))
+                    self.objects.append(LocationLocal(north=intersect.y, east=intersect.x, down=0))
 
         
     def update_readings(self):

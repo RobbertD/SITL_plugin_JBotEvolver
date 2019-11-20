@@ -1,7 +1,8 @@
 import cmath
 import math
-from dronekit import LocationGlobal, LocationGlobalRelative
+from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 from shapely.affinity import affine_transform
+from geometric_helper_functions import *
 
 class ConeTypeSensor:
     """cone type sensor
@@ -18,19 +19,19 @@ class ConeTypeSensor:
 
     def update_readings(self, objects, inversed=True):
         self.objects = objects
-        for obj in self.objects: (obj.distance, obj.angle) = self.calc_distance_and_angle(obj.local_NED_coordinates)
+        d_and_a = [calc_distance_and_angle(obj, self.owner.location.local_frame, rel_angle=self.owner.heading) for obj in self.objects]
 
         temp = []
-        temp.append(list(filter(lambda x: x.angle <= 135 and x.angle >= 45, self.objects ))) # forward
-        temp.append(list(filter(lambda x: x.angle <= 45. or x.angle >= 315., self.objects ))) # right
-        temp.append(list(filter(lambda x: x.angle <= 315 and x.angle >= 225, self.objects ))) # back
-        temp.append(list(filter(lambda x: x.angle <= 225 and x.angle >= 135, self.objects ))) # left
+        temp.append(list(filter(lambda x: x[1] <= 45 or x[1] >= 315, d_and_a ))) # forward
+        temp.append(list(filter(lambda x: x[1] <= 135 and x[1] >= 45, d_and_a ))) # right
+        temp.append(list(filter(lambda x: x[1] <= 225 and x[1] >= 135, d_and_a ))) # back
+        temp.append(list(filter(lambda x: x[1] <= 315 and x[1] >= 225, d_and_a ))) # left
 
         for i,t in enumerate(temp):
             if not t: # empty list, default to max range
                 r = self.range
             else: # find closest physical object in list
-                closest = min(t, key= lambda x: x.distance).distance
+                closest = min(t, key= lambda x: x[0])[0]
                 r = closest if closest<self.range else self.range
             self.readings[i] = r/self.range
 
@@ -39,27 +40,27 @@ class ConeTypeSensor:
 
         return self.readings
 
-    def calc_distance_and_angle(self, p):
-        # transform to local coordinates
-        p_local = affine_transform(p, [1,0,0,1, -self.owner.local_NED_coordinates.x, -self.owner.local_NED_coordinates.y])
-        # convert to polar coordinates
-        (distance, angle) = cmath.polar(complex(p_local.x, p_local.y)) # angle is in radians
+    # def calc_distance_and_angle(self, p):
+    #     # transform to local coordinates
+    #     p_local = affine_transform(p, [1,0,0,1, -1*self.owner.location.local_frame.east, -1*self.owner.location.local_frame.north])
+    #     # convert to polar coordinates
+    #     (distance, angle) = cmath.polar(complex(p_local.x, p_local.y)) # angle is in radians
         
-        # convert to degrees
-        angle = math.degrees(angle)
+    #     # convert to degrees
+    #     angle = math.degrees(angle)
 
-        # take into account the relative angle of the plane
-        angle = angle + self.owner.heading #
+    #     # take into account the relative angle of the plane
+    #     angle = angle + self.owner.heading #
         
-        # only positive angles
-        if angle < 0:
-            angle+=360
+    #     # only positive angles
+    #     if angle < 0:
+    #         angle+=360
 
-        # only angles under 360
-        if angle > 360:
-            angle-=360
+    #     # only angles under 360
+    #     if angle > 360:
+    #         angle-=360
         
-        return (distance, angle)
+    #     return (distance, angle)
 
 
 

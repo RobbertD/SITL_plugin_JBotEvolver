@@ -14,12 +14,25 @@ def calc_distance_and_angle(p: LocationLocal, ref_p: LocationLocal, rel_angle=0)
         ref_p = Point(ref_p.east, ref_p.north)
         # transform to local coordinates
         p_local = affine_transform(p, [1,0,0,1, -ref_p.x, -ref_p.y])
-        p_local = rotate(p_local, rel_angle) # take into account the relative angle of the plane
-        # convert to polar coordinates
+        # alpha = -90 # plus 90 so north is a heading of 0 degrees.With shapely positive rotations are counter clockwise 
+        # p_local = rotate(p_local, alpha, origin=(0,0)) # take into account the relative angle of the plane
+        # # convert to polar coordinates
+        # distance = math.sqrt(pow(p.x - ref_p.x, 2) + pow(p.y - ref_p.y, 2))
+        # angle = math.atan((p.x - ref_p.x) / (p.y - ref_p.y))
         (distance, angle) = cmath.polar(complex(p_local.x, p_local.y)) # angle is in radians
         
-        # convert to degrees
-        angle = math.degrees(angle)
+        # convert to degrees and change axis
+        # -1 to turn positive angles clockwise
+        # +90 to set north to heading 0
+        angle = 90 - math.degrees(angle) - rel_angle
+
+        # only positive angles
+        if angle < 0:
+            angle+=360
+
+        # only angles under 360
+        if angle > 360:
+            angle-=360
 
         return (distance, angle)
 

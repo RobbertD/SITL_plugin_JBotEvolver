@@ -13,28 +13,29 @@ from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 
 import time
 
-MAX_TIME_SECONDS = 5000
+MAX_TIME_SECONDS = 60
 UPDATE_FREQ = 10 
 MAX_TIMESTEPS = MAX_TIME_SECONDS * UPDATE_FREQ
 SEEN_TARGET_BONUS = 100
 MAX_GENERATIONS = 40
-
+SPEED_UP = 4
 
 def eval_genomes(genomes, config):
-    for genome_id, genome in genomes:
+    for i, (genome_id, genome) in enumerate(genomes):
         # start a clean simulation without having to shutdown SITL
+        print('Evaluating genome {} of {}'.format(i, len(genomes)))
         sm.run_sim()
+        time.sleep(5/SPEED_UP) # give the simulation some time to set up 
         net = neat.nn.FeedForwardNetwork.create(genome, config)
         genome.fitness = 0
         for t in range(MAX_TIMESTEPS):
+            if sm.early_stop():
+                print('Stopping early')
+                break
             genome.fitness += sm.get_fitness_data()
             sensor_readings = sm.vehicle1.get_sensor_readings()
             output = net.activate(sensor_readings)
-            sm.vehicle1.control_plane(thrust=1, angle=output[0], duration=(1/UPDATE_FREQ))
-
-
-
-
+            sm.vehicle1.control_plane(thrust=1, angle=output[0], duration=(1/(UPDATE_FREQ*SPEED_UP)))
 
 # def eval_genomes(genomes, config):
 #     for genome_id, genome in genomes:
@@ -92,9 +93,7 @@ if __name__ == '__main__':
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config.py')
     run(config_path)
-    
 
-    
     # sm.run_sim()
     # sm.vehicle1.get_sensor_readings()
     # sm.vehicle1.set_position(LocationGlobal(-35.360302546095355,149.16494236133667, 0), 100, 1)

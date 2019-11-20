@@ -21,11 +21,13 @@ class TargetGenerator:
             p = find_point()
             while not self.fencePolygon.contains(p):
                 p = find_point()
-            targets.append(LocationLocalFLU(front=p.y, left=p.x, up=0))
+            targets.append(LocationLocalFLU(front=p.y, left=p.x*-1, up=0))
+            
 
         targets = [FLU_to_NED(t, vehicle_ref.initial_heading, vehicle_ref.location.local_frame) for t in targets]
-
+        [print('Target created at: {}'.format(t)) for t in targets]
         return targets
+
 
         
 

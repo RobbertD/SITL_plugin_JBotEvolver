@@ -20,10 +20,10 @@ class Simulation():
     def __init__(self, targets_amount=3):
         
         self.rel_geofence_waypoints = [
-            (100, 100),
-            (100, -100),
-            (-100, -100),
-            (-100, 100),
+            (500, 500),
+            (500, -500),
+            (-500, -500),
+            (-500, 500),
         ]
 
         connection_string = '127.0.0.1:14550'
@@ -40,10 +40,15 @@ class Simulation():
         # if home_alt is None:
         #     home_alt = self.vehicle1.location.global_frame.alt
         print('home: {}'.format(self.vehicle1.location.global_frame))
-
+        # set the home location,
+        # is useful when a simulation is already in the air when NEAT_controller.py is run
         self.vehicle1.home_location = LocationGlobal(self.vehicle1.location.global_frame.lat,
                                                      self.vehicle1.location.global_frame.lon,
                                                      584.21)
+        # give the simulation some time to send and receive the mavlink message
+        time.sleep(1)
+        # update the home loc on dronekits side
+        self.vehicle1.get_home_loc()
 
         print('Creating targets ...')
         self.targets_amount = targets_amount
@@ -65,17 +70,29 @@ class Simulation():
         self.targets = targets
         self.targets = self.targets + self.target_gen.generate_targets(self.targets_amount - len(self.targets), self.vehicle1)
         self.shortest_start_dist = min([calc_distance_and_angle(t, self.vehicle1.location.local_frame, self.vehicle1.heading)[0] for t in self.targets])
+        print('shortest_start_dist: {}'.format(self.shortest_start_dist))
 
     def get_fitness_data(self):
         # should be called every timestep
         timestep_fitness = 0
-        print('targets :{}'.format(len(self.targets)))
         shortest_dist = min([calc_distance_and_angle(t, self.vehicle1.location.local_frame, self.vehicle1.heading)[0] for t in self.targets])
-        if self.vehicle1.target_seen:
-            timestep_fitness += SEEN_TARGET_BONUS
-            self.vehicle1.target_seen = False
-        timestep_fitness += (self.shortest_start_dist - shortest_dist) / self.shortest_start_dist
 
+        # Add a bonus if target is seen
+        if self.vehicle1.target_seen:
+            timestep_fitness += 100 #SEEN_TARGET_BONUS
+            self.vehicle1.target_seen = False
+        
+        # Only add distance fitness is inside geofence
+        if self.vehicle1.geo_sensor.check_inside_fence():
+            timestep_fitness += (self.shortest_start_dist - shortest_dist) / self.shortest_start_dist
+            # print('timestep fitness: {}'.format(timestep_fitness))aq
+        else:
+             timestep_fitness = -5
         return timestep_fitness
+
+    def early_stop(self):
+        dist,_ = calc_distance_and_angle(self.vehicle1.location.local_frame, LocationLocal(0,0,0))
+        return dist > 700
+            
     
 
