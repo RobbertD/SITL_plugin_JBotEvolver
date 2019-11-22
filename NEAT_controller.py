@@ -3,39 +3,60 @@
 """
 
 from __future__ import print_function
+import argparse
 import os
+import subprocess
 import neat
 import visualize
 from MyVehicle import MyVehicle
 from Simulation import Simulation
 import random
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
-
+import threading
+import multiprocessing as mp
 import time
 
 MAX_TIME_SECONDS = 60
 UPDATE_FREQ = 10 
 MAX_TIMESTEPS = MAX_TIME_SECONDS * UPDATE_FREQ
 SEEN_TARGET_BONUS = 100
-MAX_GENERATIONS = 40
+MAX_GENERATIONS = 10
 SPEED_UP = 4
+N_SIMS = 1 # gets set by input arg
 
 def eval_genomes(genomes, config):
     for i, (genome_id, genome) in enumerate(genomes):
-        # start a clean simulation without having to shutdown SITL
-        print('Evaluating genome {} of {}'.format(i, len(genomes)))
-        sm.run_sim()
-        time.sleep(5/SPEED_UP) # give the simulation some time to set up 
-        net = neat.nn.FeedForwardNetwork.create(genome, config)
-        genome.fitness = 0
-        for t in range(MAX_TIMESTEPS):
-            if sm.early_stop():
-                print('Stopping early')
-                break
-            genome.fitness += sm.get_fitness_data()
-            sensor_readings = sm.vehicle1.get_sensor_readings()
-            output = net.activate(sensor_readings)
-            sm.vehicle1.control_plane(thrust=1, angle=output[0], duration=(1/(UPDATE_FREQ*SPEED_UP)))
+        # check the semaphore to see if a simulation is availble, blocks untill one is availble
+        with semaphore:
+            # start a clean simulation without having to shutdown SITL
+            print('Evaluating genome {} of {}'.format(i, len(genomes)))
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            t = threading.Thread(target=run_sim, args=(net,))
+            t.daemon = True # thread closes when main thread closes
+            genome.fitness = run_sim(net)
+
+def run_sim(net):
+    # TODO check if speedups and threads arent set to high so they dont interfere with the timing
+    # loop over the locks to find the simulator that is unlocked
+    for i, lock in enumerate(sim_locks):
+        if lock.threading.acquire(blocking=False): #returns False if busy
+            sims[i]
+            sims[i].reset()
+            time.sleep(5/SPEED_UP) # give the simulation some time to set up 
+            
+            fitness = 0
+            for t in range(MAX_TIMESTEPS):
+                if sm.early_stop():
+                    print('Stopping early')
+                    break
+                fitness += sims[i].get_fitness_data()
+                sensor_readings = sims[i].vehicle1.get_sensor_readings()
+                output = net.activate(sensor_readings)
+                sims[i].vehicle1.control_plane(thrust=1, angle=output[0], duration=(1/(UPDATE_FREQ*SPEED_UP)))
+            # if simulation has run, release and break. 
+            lock.release()
+            break
+    return fitness
 
 # def eval_genomes(genomes, config):
 #     for genome_id, genome in genomes:
@@ -82,25 +103,71 @@ def run(config_file):
     # p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-4')
     # p.run(eval_genomes, 10)
 
+def start_sim(cmd):
+    # proc = subprocess.run(cmd, shell=False, stdout=subprocess.DEVNULL)
+    proc = subprocess.run(cmd, shell=False)
+    # set the speedup parameter 'manually'
+    # proc.communicate(input='param set SIM_SPEEDUP 8')
+    # # give it time to setup
+    # time.sleep(15)
+    
+
+
 
 if __name__ == '__main__':
+    # parse input
+    parser = argparse.ArgumentParser(description='Train a NN with the NEAT algorithm.')
+    parser.add_argument('-n_sims', type=int, 
+                    help='Amount of simulators to run in parallel')
+    parser.add_argument('-start_sims', type=bool,
+                    help='Set to False if sims are already running')
+    args = parser.parse_args()
+
     random.seed(a=1337)
-    sm = Simulation(targets_amount=5)
 
-    # Determine path to configuration file. This path manipulation is
-    # here so that the script will run successfully regardless of the
-    # current working directory.
-    local_dir = os.path.dirname(__file__)
-    config_path = os.path.join(local_dir, 'config.py')
-    run(config_path)
+    N_SIMS = args.n_sims
 
-    # sm.run_sim()
-    # sm.vehicle1.get_sensor_readings()
-    # sm.vehicle1.set_position(LocationGlobal(-35.360302546095355,149.16494236133667, 0), 100, 1)
-    # time.sleep(10)
-    # 
-    # sm.vehicle1.control_plane(1, angle=0, duration=0.1)
+    # Startup N_SIMS sim_vehicle.py if needed
+    if args.start_sims:
+        mp.set_start_method('spawn')
+        for i in range(N_SIMS): 
+            cmd = []
+            cmd.append('sim_vehicle.py')
+            cmd.append('-vArduPlane')
+            cmd.append('--speedup=' + str(SPEED_UP)) # bug in ardupilot, doesnt actually do anything
+            cmd.append('-I' + str(i))
+            cmd.append('--console')
+            cmd.append('--map')
 
+            print(cmd)
+            p = mp.Process(target=start_sim, args=(cmd,))
+            p.daemon = True # thread closes when main thread closes
+            p.start()
+            # Give the process some time to secure the needed ports
+            time.sleep(1)
 
+        # let sim_vehicle instances setup before attempting to connect to them
+        time.sleep(10)
+            
+
+            
+
+    # connect to the simulators
+    # sims = []
+    # for i in range(N_SIMS):
+    #     port = 14550 + i*10
+    #     connection_string = '127.0.0.1:' + str(port)
+    #     sims[i] = Simulation(connection_string, targets_amount=5)
+
+    # # Set locks for accessing the sims
+    # sim_locks =  [threading.Lock() for _ in sims]
+    # semaphore = threading.BoundedSemaphore(len(sims - 1))
+
+    # # Determine path to configuration file. This path manipulation is
+    # # here so that the script will run successfully regardless of the
+    # # current working directory.
+    # local_dir = os.path.dirname(__file__)
+    # config_path = os.path.join(local_dir, 'config.py')
+    # run(config_path)
 
 

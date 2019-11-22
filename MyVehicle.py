@@ -77,18 +77,18 @@ class MyVehicle(Vehicle):
 
         if self.location.global_relative_frame.alt > 10:
             print('Plane already in the air')
-            pass
+            return 
         cmds = self.commands
 
         print(" Clear any existing commands")
         cmds.clear() 
-
+        
         # create command using mavlink mission command message 
         # http://ardupilot.org/plane/docs/common-mavlink-mission-command-messages-mav_cmd.html#mav-cmd-nav-takeoff
         # param1=pitch angle at takeoff, param7=desired altitude
         cmds.add(Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
         0, 0, 0, 0, 0, 0,
-        self.home_location.lat, self.home_location.lon, aTargetAltitude)) # first command in the mission is ignored for some reason, see https://github.com/dronekit/dronekit-python/blob/source-system-filtering/examples/avoidance/avoidance-manytests-plane.py#L376
+        0, 0, 0)) # first command in the mission is ignored for some reason, see https://github.com/dronekit/dronekit-python/blob/source-system-filtering/examples/avoidance/avoidance-manytests-plane.py#L376
         
         cmds.add(Command( 0, 0, 0, 
         mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, 
@@ -226,19 +226,16 @@ class MyVehicle(Vehicle):
         cmds.clear() 
 
         # create command using mavlink mission command message 
-        # first command might be ignored??? not sure if only for takeoff
+        # set 'current' parameter (after command type) to 2 for guided mode
         cmds.add(Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-        0, 0, 0, 0, 0, 0,
-        self.home_location.lat, self.home_location.lon, altitude)) # first command in the mission is ignored for some reason, see https://github.com/dronekit/dronekit-python/blob/source-system-filtering/examples/avoidance/avoidance-manytests-plane.py#L376
-        cmds.add(Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-        0, 0, 0, 1, 0, 0,
+        2, 0, 0, 1, 0, 0,
         location.lat, location.lon, altitude))
         cmds.upload()
         print('sent waypoint location:{}'.format(location))
 
     # WORKS
     def set_position(self, location, altitude, duration):
-        self.mode = VehicleMode("AUTO")
+        self.mode = VehicleMode("GUIDED")
         self.send_position_target(location, altitude)
         start = time.time()
         while time.time() - start < duration:
@@ -255,18 +252,20 @@ class MyVehicle(Vehicle):
         self.set_position(wp_coord, altitude, duration)
 
     def control_plane(self, thrust, angle, duration):
-        # this shit doesnt work
-        # coord = on_half_circle(angle, angle_limit=45, r=300)
-        # print('FLU control coord:{}'.format(coord))
-        # self.set_FLU_position(coord, 100, 1)
+        # this shit does work
+        coord = on_half_circle(angle, angle_limit=45, r=300)
+        print('FLU control coord:{}'.format(coord))
+        self.set_FLU_position(coord, 100, 1)
+
+        # Overriding RC was not recommended
         # scale to 1000-2000 range
-        pwm = (angle * 500) + 1500 
+        # pwm = (angle * 500) + 1500 
         
-        self.mode = VehicleMode("CRUISE")
-        start = time.time()
-        while time.time() - start < duration:
-            self.channels.overrides['1'] = int(pwm)
-            time.sleep(0.01)
+        # self.mode = VehicleMode("CRUISE")
+        # start = time.time()
+        # while time.time() - start < duration:
+        #     self.channels.overrides['1'] = int(pwm)
+        #     time.sleep(0.01)
 
     def set_environment(self, env):
         self.environment = env

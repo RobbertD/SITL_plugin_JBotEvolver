@@ -17,7 +17,7 @@ from geometric_helper_functions import *
 
 class Simulation():
     
-    def __init__(self, targets_amount=3):
+    def __init__(self, connection_string, targets_amount=3):
         
         self.rel_geofence_waypoints = [
             (500, 500),
@@ -26,7 +26,7 @@ class Simulation():
             (-500, 500),
         ]
 
-        connection_string = '127.0.0.1:14550'
+        self.connection_string = connection_string
         # Connect to the vehicle1.
         print("Connecting to vehicle1 on: %s" % (connection_string,))
         self.vehicle1 = connect(connection_string, wait_ready=True, vehicle_class=MyVehicle)
@@ -59,7 +59,7 @@ class Simulation():
         # Finally takeoff
         self.vehicle1.arm_and_takeoff(50)
 
-    def run_sim(self):
+    def reset(self):
         # reset the seed
         random.seed(a=1337)
         self.vehicle1.reset()
@@ -93,6 +93,14 @@ class Simulation():
     def early_stop(self):
         dist,_ = calc_distance_and_angle(self.vehicle1.location.local_frame, LocationLocal(0,0,0))
         return dist > 700
+
+if __name__ == '__main__':
+    s = Simulation('127.0.0.1:14550', targets_amount=5)
+    # s.vehicle1.arm_and_takeoff_test(50.)
+    # s.vehicle1.control_plane(thrust=1, angle=1, duration=10)
+    s.vehicle1.control_plane(angle=1, thrust=1, duration=0.5)
+    s.vehicle1.control_plane(angle=-1, thrust=1, duration=0.5)
+    s.vehicle1.control_plane(angle=1, thrust=1, duration=0.5)
             
     
 
