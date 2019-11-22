@@ -70,7 +70,7 @@ class Simulation():
         self.targets = targets
         self.targets = self.targets + self.target_gen.generate_targets(self.targets_amount - len(self.targets), self.vehicle1)
         self.shortest_start_dist = min([calc_distance_and_angle(t, self.vehicle1.location.local_frame, self.vehicle1.heading)[0] for t in self.targets])
-        print('shortest_start_dist: {}'.format(self.shortest_start_dist))
+        # print('shortest_start_dist: {}'.format(self.shortest_start_dist))
 
     def get_fitness_data(self):
         # should be called every timestep

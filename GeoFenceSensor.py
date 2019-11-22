@@ -7,6 +7,7 @@ from shapely.affinity import affine_transform
 from ConeTypeSensor import ConeTypeSensor
 from PhysicalObject import PhysicalObject
 from pprint import pprint
+from dronekit import LocationLocal
 from geometric_helper_functions import *
 
 
@@ -88,7 +89,8 @@ class GeoFenceSensor(ConeTypeSensor):
         else:
             # if owner is outside the geofence set sensorvalues to 0 
             # except the direction opposite to the centroid of the geofence polygon
-            distance, angle = super(GeoFenceSensor,self).calc_distance_and_angle(self.fencePolygon.centroid)
+            c = self.fencePolygon.centroid
+            distance, angle = calc_distance_and_angle(LocationLocal(north=c.y, east=c.x, down=0), self.owner.location.local_frame)
             if angle <= 135 and angle >= 45: self.readings = [0,0,1,0]         # front
             elif angle <= 45 and angle >= 315: self.readings = [0,0,0,1]    # right
             elif angle <= 315 and angle >= 225: self.readings = [1,0,0,0]   # back

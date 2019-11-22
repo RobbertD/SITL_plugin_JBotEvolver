@@ -13,6 +13,7 @@ from Simulation import Simulation
 import random
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 import threading
+from queue import Queue
 import multiprocessing as mp
 import time
 
@@ -24,29 +25,48 @@ MAX_GENERATIONS = 10
 SPEED_UP = 4
 N_SIMS = 1 # gets set by input arg
 
+#  TODO debug: WARNING:autopilot:Mission upload timeout
+# TODO debug:  RuntimeError: Expected 8 inputs, got 7, in neural net
+# TODO logging?
+# TODO seems to be evaluating genome 49 over and over?
+
+
 def eval_genomes(genomes, config):
+    q = Queue()
+
     for i, (genome_id, genome) in enumerate(genomes):
-        # check the semaphore to see if a simulation is availble, blocks untill one is availble
-        with semaphore:
-            # start a clean simulation without having to shutdown SITL
+        q.put((genome_id, genome))
+
+    def threader():
+        # while there are genomes in the queue a thread will run a simulation with it and return a fitness
+        while True:
+            (genome_id, genome) = q.get()
             print('Evaluating genome {} of {}'.format(i, len(genomes)))
             net = neat.nn.FeedForwardNetwork.create(genome, config)
-            t = threading.Thread(target=run_sim, args=(net,))
-            t.daemon = True # thread closes when main thread closes
             genome.fitness = run_sim(net)
+            q.task_done()
+
+    # start N_SIMS threads
+    for _ in range(N_SIMS):
+        t = threading.Thread(target=threader, args=())
+        t.daemon = True # thread closes when main thread closes
+        t.start()
+
+    # block untill all genomes are processed
+    q.join()
+            
 
 def run_sim(net):
     # TODO check if speedups and threads arent set to high so they dont interfere with the timing
     # loop over the locks to find the simulator that is unlocked
-    for i, lock in enumerate(sim_locks):
-        if lock.threading.acquire(blocking=False): #returns False if busy
-            sims[i]
+    for i, sim_lock in enumerate(sim_locks):
+        if sim_lock.acquire(blocking=False): #returns False if busy
             sims[i].reset()
             time.sleep(5/SPEED_UP) # give the simulation some time to set up 
             
             fitness = 0
             for t in range(MAX_TIMESTEPS):
-                if sm.early_stop():
+                if sims[i].early_stop():
                     print('Stopping early')
                     break
                 fitness += sims[i].get_fitness_data()
@@ -54,7 +74,7 @@ def run_sim(net):
                 output = net.activate(sensor_readings)
                 sims[i].vehicle1.control_plane(thrust=1, angle=output[0], duration=(1/(UPDATE_FREQ*SPEED_UP)))
             # if simulation has run, release and break. 
-            lock.release()
+            sim_lock.release()
             break
     return fitness
 
@@ -104,8 +124,8 @@ def run(config_file):
     # p.run(eval_genomes, 10)
 
 def start_sim(cmd):
-    # proc = subprocess.run(cmd, shell=False, stdout=subprocess.DEVNULL)
-    proc = subprocess.run(cmd, shell=False)
+    proc = subprocess.run(cmd, shell=False, stdout=subprocess.DEVNULL)
+    # proc = subprocess.run(cmd, shell=False)
     # set the speedup parameter 'manually'
     # proc.communicate(input='param set SIM_SPEEDUP 8')
     # # give it time to setup
@@ -136,7 +156,8 @@ if __name__ == '__main__':
             cmd.append('-vArduPlane')
             cmd.append('--speedup=' + str(SPEED_UP)) # bug in ardupilot, doesnt actually do anything
             cmd.append('-I' + str(i))
-            cmd.append('--console')
+            # cmd.append('--console')
+
             cmd.append('--map')
 
             print(cmd)
@@ -147,27 +168,26 @@ if __name__ == '__main__':
             time.sleep(1)
 
         # let sim_vehicle instances setup before attempting to connect to them
-        time.sleep(10)
+        time.sleep(5)
             
 
             
 
     # connect to the simulators
-    # sims = []
-    # for i in range(N_SIMS):
-    #     port = 14550 + i*10
-    #     connection_string = '127.0.0.1:' + str(port)
-    #     sims[i] = Simulation(connection_string, targets_amount=5)
+    sims = []
+    for i in range(N_SIMS):
+        port = 14550 + i*10
+        connection_string = '127.0.0.1:' + str(port)
+        sims.append(Simulation(connection_string, targets_amount=5))
 
-    # # Set locks for accessing the sims
-    # sim_locks =  [threading.Lock() for _ in sims]
-    # semaphore = threading.BoundedSemaphore(len(sims - 1))
+    # Set locks for accessing the sims
+    sim_locks =  [threading.Lock() for _ in sims]
 
-    # # Determine path to configuration file. This path manipulation is
-    # # here so that the script will run successfully regardless of the
-    # # current working directory.
-    # local_dir = os.path.dirname(__file__)
-    # config_path = os.path.join(local_dir, 'config.py')
-    # run(config_path)
+    # Determine path to configuration file. This path manipulation is
+    # here so that the script will run successfully regardless of the
+    # current working directory.
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'config.py')
+    run(config_path)
 
 

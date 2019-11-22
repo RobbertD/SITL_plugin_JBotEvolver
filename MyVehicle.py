@@ -228,10 +228,10 @@ class MyVehicle(Vehicle):
         # create command using mavlink mission command message 
         # set 'current' parameter (after command type) to 2 for guided mode
         cmds.add(Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
-        2, 0, 0, 1, 0, 0,
-        location.lat, location.lon, altitude))
+                            2, 0, 0, 1, 0, 0,
+                            location.lat, location.lon, altitude))
         cmds.upload()
-        print('sent waypoint location:{}'.format(location))
+        # print('sent waypoint location:{}'.format(location))
 
     # WORKS
     def set_position(self, location, altitude, duration):
@@ -240,21 +240,20 @@ class MyVehicle(Vehicle):
         start = time.time()
         while time.time() - start < duration:
             self.send_position_target(location, altitude)
-            time.sleep(0.1)
-        # # Reset attitude, or it will persist for 1s more due to the timeout
+            # TODO create  a constants class
+            time.sleep(0.05)
         # self.send_position_target(0)
 
     def set_FLU_position(self, FLU_position, altitude, duration):
         wp_coord = FLU_to_latlon(FLU_position, self.heading, self.location.global_relative_frame)
-        print(self.heading)
-        print('current location:{}'.format(self.location.global_relative_frame))
-        print('waypoint location:{}'.format(wp_coord))
+        # print('current location:{}'.format(self.location.global_relative_frame))
+        # print('waypoint location:{}'.format(wp_coord))
         self.set_position(wp_coord, altitude, duration)
 
     def control_plane(self, thrust, angle, duration):
         # this shit does work
         coord = on_half_circle(angle, angle_limit=45, r=300)
-        print('FLU control coord:{}'.format(coord))
+        # print('FLU control coord:{}'.format(coord))
         self.set_FLU_position(coord, 100, 1)
 
         # Overriding RC was not recommended

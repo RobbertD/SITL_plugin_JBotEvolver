@@ -22,7 +22,6 @@ def calc_distance_and_angle(p: LocationLocal, ref_p: LocationLocal, rel_angle=0)
         (distance, angle) = cmath.polar(complex(p_local.x, p_local.y)) # angle is in radians
         
         # convert to degrees and change axis
-        # -1 to turn positive angles clockwise
         # +90 to set north to heading 0
         angle = 90 - math.degrees(angle) - rel_angle
 
@@ -76,7 +75,7 @@ def FLU_to_NED(p_FLU: LocationLocalFLU, relative_angle, ref_NED_coordinates: Loc
 def FLU_to_latlon(p: LocationLocalFLU, relative_angle, ref_global_coordinates: Union[LocationGlobal, LocationGlobalRelative]):
         # ref_global_coordinates should be the LocationGlobal of the plane
         p_NED = FLU_to_NED(p, relative_angle, LocationLocal(0,0,0))
-        print('ned coordinates: {}'.format(p_NED))
+        # print('ned coordinates: {}'.format(p_NED))
         return NED_to_latlon(p_NED, ref_global_coordinates)
 
 def on_half_circle(angle, angle_limit, r):
