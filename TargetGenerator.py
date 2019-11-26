@@ -28,6 +28,9 @@ class TargetGenerator:
         [print('Target created at: {}'.format(t)) for t in targets]
         return targets
 
+    def set_fence(self, vehicle_ref):
+        self.fencePolygon = Polygon(vehicle_ref.geo_sensor.points)
+
 
         
 

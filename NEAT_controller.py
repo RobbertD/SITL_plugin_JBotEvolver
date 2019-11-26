@@ -1,34 +1,35 @@
-"""
-2-input XOR example -- this is most likely the simplest possible example.
-"""
+
 
 from __future__ import print_function
+from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
+from MyVehicle import MyVehicle
+from Simulation import Simulation
 import argparse
 import os
 import subprocess
 import neat
 import visualize
-from MyVehicle import MyVehicle
-from Simulation import Simulation
+
 import random
-from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
+
 import threading
 from queue import Queue
 import multiprocessing as mp
 import time
 
-MAX_TIME_SECONDS = 60
-UPDATE_FREQ = 10 
+MAX_TIME_SECONDS = 20
+UPDATE_FREQ = 1
 MAX_TIMESTEPS = MAX_TIME_SECONDS * UPDATE_FREQ
 SEEN_TARGET_BONUS = 100
 MAX_GENERATIONS = 10
-SPEED_UP = 4
+SPEED_UP = 10
+
 N_SIMS = 1 # gets set by input arg
 
-#  TODO debug: WARNING:autopilot:Mission upload timeout
-# TODO debug:  RuntimeError: Expected 8 inputs, got 7, in neural net
+# TODO debug: WARNING:autopilot:Mission upload timeout, still occuring but doesn't seem to be a problem with current setup
+# TODO debug:  RuntimeError: Expected 8 inputs, got 7, in neural net, hasen't happend again
 # TODO logging?
-# TODO seems to be evaluating genome 49 over and over?
+
 
 
 def eval_genomes(genomes, config):
@@ -36,12 +37,16 @@ def eval_genomes(genomes, config):
 
     for i, (genome_id, genome) in enumerate(genomes):
         q.put((genome_id, genome))
+        # print(genome_id)
 
     def threader():
         # while there are genomes in the queue a thread will run a simulation with it and return a fitness
         while True:
             (genome_id, genome) = q.get()
-            print('Evaluating genome {} of {}'.format(i, len(genomes)))
+            if genome_id==3:
+                print('genome id 3')
+            
+            print('Evaluating genome {} of {}'.format(genome_id, len(genomes)))
             net = neat.nn.FeedForwardNetwork.create(genome, config)
             genome.fitness = run_sim(net)
             q.task_done()
@@ -66,6 +71,7 @@ def run_sim(net):
             
             fitness = 0
             for t in range(MAX_TIMESTEPS):
+                print(t)
                 if sims[i].early_stop():
                     print('Stopping early')
                     break
@@ -130,16 +136,13 @@ def start_sim(cmd):
     # proc.communicate(input='param set SIM_SPEEDUP 8')
     # # give it time to setup
     # time.sleep(15)
-    
-
-
 
 if __name__ == '__main__':
     # parse input
     parser = argparse.ArgumentParser(description='Train a NN with the NEAT algorithm.')
-    parser.add_argument('-n_sims', type=int, 
+    parser.add_argument('-n_sims', type=int, default=1,
                     help='Amount of simulators to run in parallel')
-    parser.add_argument('-start_sims', type=bool,
+    parser.add_argument('-start_sims', type=bool, default=1,
                     help='Set to False if sims are already running')
     args = parser.parse_args()
 
@@ -178,7 +181,7 @@ if __name__ == '__main__':
     for i in range(N_SIMS):
         port = 14550 + i*10
         connection_string = '127.0.0.1:' + str(port)
-        sims.append(Simulation(connection_string, targets_amount=5))
+        sims.append(Simulation(connection_string, targets_amount=5, speedup=SPEED_UP))
 
     # Set locks for accessing the sims
     sim_locks =  [threading.Lock() for _ in sims]

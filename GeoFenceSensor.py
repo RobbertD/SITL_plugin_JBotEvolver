@@ -25,7 +25,7 @@ class GeoFenceSensor(ConeTypeSensor):
         if waypoints[0] == waypoints[-1]:
             del waypoints[-1]
             
-        # convert to Points
+        # Save as tuples 
         self.points = waypoints
 
         # create polygon to check if owner is inside fence
@@ -37,8 +37,8 @@ class GeoFenceSensor(ConeTypeSensor):
         # print('Geofence set with the following coordinates: \n{} '.format(waypoints))
         
     def reset_FLU_geo_fence(self):
-        # assuming home_location is reset right before
-        NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), self.owner.initial_heading, LocationLocal(0,0,0)) for p in self.points]
+        # assuming env_origin is reset right before
+        NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), self.owner.initial_heading, self.owner.env_origin) for p in self.points]
         latlon_geofence = [NED_to_latlon(g, self.owner.location.global_frame) for g in NED_geofence]
         print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(latlon_geofence[0], latlon_geofence[1], latlon_geofence[2], latlon_geofence[3]))
         NED_geofence = [(p.east, p.north) for p in NED_geofence]
@@ -94,7 +94,7 @@ class GeoFenceSensor(ConeTypeSensor):
             if angle <= 135 and angle >= 45: self.readings = [0,0,1,0]         # front
             elif angle <= 45 and angle >= 315: self.readings = [0,0,0,1]    # right
             elif angle <= 315 and angle >= 225: self.readings = [1,0,0,0]   # back
-            elif angle <= 225 and angle >= 135: self.readings = [0,1,0,]   # left
+            elif angle <= 225 and angle >= 135: self.readings = [0,1,0,0]   # left
             
             return self.readings
 

@@ -17,8 +17,8 @@ from geometric_helper_functions import *
 
 class Simulation():
     
-    def __init__(self, connection_string, targets_amount=3):
-        
+    def __init__(self, connection_string, targets_amount=3, speedup=1):
+        self.speedup = speedup
         self.rel_geofence_waypoints = [
             (500, 500),
             (500, -500),
@@ -33,22 +33,10 @@ class Simulation():
         self.vehicle1.wait_ready(True, timout=100)
         self.vehicle1.wait_ready('location', timout=100)
         self.vehicle1.set_environment(self)
+        self.vehicle1.parameters['SIM_SPEEDUP']=speedup
         self.vehicle1.geo_sensor.set_geo_fence(self.rel_geofence_waypoints)
-        
-        # self.home_alt = None
-        self.vehicle1.initial_heading = self.vehicle1.heading
-        # if home_alt is None:
-        #     home_alt = self.vehicle1.location.global_frame.alt
+
         print('home: {}'.format(self.vehicle1.location.global_frame))
-        # set the home location,
-        # is useful when a simulation is already in the air when NEAT_controller.py is run
-        self.vehicle1.home_location = LocationGlobal(self.vehicle1.location.global_frame.lat,
-                                                     self.vehicle1.location.global_frame.lon,
-                                                     584.21)
-        # give the simulation some time to send and receive the mavlink message
-        time.sleep(1)
-        # update the home loc on dronekits side
-        self.vehicle1.get_home_loc()
 
         print('Creating targets ...')
         self.targets_amount = targets_amount
@@ -57,7 +45,7 @@ class Simulation():
 
         self.vehicle1.set_attribute_listeners()
         # Finally takeoff
-        self.vehicle1.arm_and_takeoff(50)
+        self.vehicle1.arm_and_takeoff(300)
 
     def reset(self):
         # reset the seed
@@ -91,7 +79,7 @@ class Simulation():
         return timestep_fitness
 
     def early_stop(self):
-        dist,_ = calc_distance_and_angle(self.vehicle1.location.local_frame, LocationLocal(0,0,0))
+        dist,_ = calc_distance_and_angle(self.vehicle1.location.local_frame, self.vehicle1.env_origin)
         return dist > 700
 
 if __name__ == '__main__':

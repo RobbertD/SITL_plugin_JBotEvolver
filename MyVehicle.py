@@ -15,8 +15,11 @@ class MyVehicle(Vehicle):
     def __init__(self, *args):
         super(MyVehicle, self).__init__(*args)
 
-        # save the initial heading, geofence and targets are defined relative to the initial frame (FLU)
+        # save the initial heading, geofence and targets are defined relative to the initial frame (FLU), is reset after each genome
         self.initial_heading = self.heading
+        # define an env_origin that acts as a temp home location for 1 evaluation
+        # is used instead of resetting the home location itself as this caused mission upload timeouts 
+        self.env_origin = self.location.local_frame
 
         # Setup sensors
         print('Setting up sensors...')
@@ -56,13 +59,21 @@ class MyVehicle(Vehicle):
                 self.environment.set_targets(uns)
                 # use this as a flag to determine in which timestamp a target is seen
                 self.target_seen = True
+        #Create a message listener for all messages.
+        @self.on_message(['MISSION_ACK', 'COMMAND_ACK', 'MISSION_REQUEST', 'MISSION_CURRENT'])
+        def listener(self, name, message):
+            print( 'message: %s' % message)
+
+
 
     def get_home_loc(self):
         # Get Vehicle Home location - will be `None` until first set by autopilot
         print(" Waiting for home location ...")
         cmds = self.commands
+
         cmds.download()
-        cmds.wait_ready()
+        cmds.wait_ready(timeout=20)
+            
         if not self.home_location:
             print(" Waiting for home location ...")
 
@@ -230,18 +241,20 @@ class MyVehicle(Vehicle):
         cmds.add(Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
                             2, 0, 0, 1, 0, 0,
                             location.lat, location.lon, altitude))
+        print('uploading mission')
         cmds.upload()
         # print('sent waypoint location:{}'.format(location))
 
     # WORKS
     def set_position(self, location, altitude, duration):
-        self.mode = VehicleMode("GUIDED")
+        # self.mode = VehicleMode("GUIDED")
         self.send_position_target(location, altitude)
-        start = time.time()
-        while time.time() - start < duration:
-            self.send_position_target(location, altitude)
-            # TODO create  a constants class
-            time.sleep(0.05)
+        # Dont bother with sending the same message multiple times when running in sitl
+        # start = time.time()
+        # while time.time() - start < duration:
+        #     self.send_position_target(location, altitude)
+        #     # TODO create  a constants class
+        #     time.sleep(0.05/self.environment.speedup)
         # self.send_position_target(0)
 
     def set_FLU_position(self, FLU_position, altitude, duration):
@@ -252,10 +265,10 @@ class MyVehicle(Vehicle):
 
     def control_plane(self, thrust, angle, duration):
         # this shit does work
-        coord = on_half_circle(angle, angle_limit=45, r=300)
+        #duration is in timesteps
+        coord = on_half_circle(angle, angle_limit=45, r=500)
         # print('FLU control coord:{}'.format(coord))
-        self.set_FLU_position(coord, 100, 1)
-
+        self.set_FLU_position(coord, 300, duration)
         # Overriding RC was not recommended
         # scale to 1000-2000 range
         # pwm = (angle * 500) + 1500 
@@ -275,12 +288,12 @@ class MyVehicle(Vehicle):
     def reset(self):
         self.seen_targets = []
         self.initial_heading = self.heading
-        # set the home location
-        self.home_location = LocationGlobal(self.location.global_frame.lat,
-                                            self.location.global_frame.lon,
-                                            584.21)
+        # set the env origin
+        self.env_origin = self.location.local_frame
         # give the simulation some time to send and receive the mavlink message
         time.sleep(1)
         # update the home loc on dronekits side
-        self.get_home_loc()
-        self.geo_sensor.reset_FLU_geo_fence()  
+        # after 2 genomes theis starts giving problems (WARNING:autopilot:Mission upload timeout)
+        # self.get_home_loc()
+        self.geo_sensor.reset_FLU_geo_fence()
+        self.mode = VehicleMode("GUIDED")
