@@ -34,7 +34,7 @@ class Simulation():
         self.vehicle1.wait_ready('location', timout=100)
         self.vehicle1.set_environment(self)
         self.vehicle1.parameters['SIM_SPEEDUP']=speedup
-        self.vehicle1.geo_sensor.set_geo_fence(self.rel_geofence_waypoints)
+        self.vehicle1.geo_sensor.set_flu_points(self.rel_geofence_waypoints)
 
         print('home: {}'.format(self.vehicle1.location.global_frame))
 

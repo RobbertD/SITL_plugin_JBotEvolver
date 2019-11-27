@@ -1,5 +1,6 @@
 import cmath
 import math
+import copy
 from shapely.geometry.polygon import LinearRing, LineString, Polygon
 from shapely.geometry.point import Point
 from shapely.ops import nearest_points
@@ -17,8 +18,14 @@ class GeoFenceSensor(ConeTypeSensor):
     """
     def __init__(self, owner, range=1.0):
         super(GeoFenceSensor, self).__init__(owner, range=range)
-        self.points = []
+        self.__flu_points = []
+        self.__points = []
+
         self.fencePolygon = None
+
+    def set_flu_points(self, flu_points):
+        self.__flu_points = flu_points
+        self.set_geo_fence(self.__flu_points)
 
     def set_geo_fence(self, waypoints):
          # if the last and first waypoint are the same, delete the last one
@@ -26,20 +33,22 @@ class GeoFenceSensor(ConeTypeSensor):
             del waypoints[-1]
             
         # Save as tuples 
-        self.points = waypoints
-
+        self.__points = copy.copy(waypoints)
+ 
         # create polygon to check if owner is inside fence
         self.fencePolygon = Polygon(waypoints)
 
         # convert list of points to list of linestrings
-        self.to_LineString(self.points)
+        self.to_LineString(waypoints)
 
         # print('Geofence set with the following coordinates: \n{} '.format(waypoints))
         
     def reset_FLU_geo_fence(self):
         # assuming env_origin is reset right before
-        NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), self.owner.initial_heading, self.owner.env_origin) for p in self.points]
-        latlon_geofence = [NED_to_latlon(g, self.owner.location.global_frame) for g in NED_geofence]
+        print(self.__flu_points)
+        NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), self.owner.initial_heading, self.owner.env_origin) for p in self.__flu_points]
+        print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
+        latlon_geofence = [NED_to_latlon(g, self.owner.home_location) for g in NED_geofence]
         print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(latlon_geofence[0], latlon_geofence[1], latlon_geofence[2], latlon_geofence[3]))
         NED_geofence = [(p.east, p.north) for p in NED_geofence]
         self.set_geo_fence(NED_geofence)
@@ -99,12 +108,12 @@ class GeoFenceSensor(ConeTypeSensor):
             return self.readings
 
 
-    def to_LineString(self, points):
+    def to_LineString(self, pts):
         # connect all the waypoints into individual LineStrings
         self.lines = []
 
-        prevPoint = points[-1]
-        for p in points:
+        prevPoint = pts[-1]
+        for p in pts:
             self.lines.append(LineString([prevPoint, p]))
             prevPoint = p
 

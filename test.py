@@ -30,19 +30,34 @@ rel_geofence_waypoints = [
     (-500, -500),
     (-500, 500),
 ]
-
 dv = DummyVehicle(LocationLocal(400, 400, 0), heading=0)
-# test coneType Sensor
-target_gen = TargetGenerator(rel_geofence_waypoints)
-targets = target_gen.generate_targets(1, dv)
-print(dv.cone_sensor.update_readings([LocationLocal(300,500,0)]))
 
-# test geofence
-print(dv.location.local_frame)
+# # test FLU_to_NED
+# NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), 0, LocationLocal(400, 400, 0)) for p in rel_geofence_waypoints]
+# latlon_geofence = [NED_to_latlon(g, LocationGlobal(-35, 145, 0)) for g in NED_geofence]
+# print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(latlon_geofence[0], latlon_geofence[1], latlon_geofence[2], latlon_geofence[3]))
+# print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
+# NED_geofence = [(p.east, p.north) for p in NED_geofence]
 
-dv.geo_sensor.set_geo_fence(rel_geofence_waypoints)
+# # test NED_to_latlon
+# latlon = NED_to_latlon(LocationLocal(400,400,0), LocationGlobal(-35, 145, 0)) 
+# print(latlon)
 
-print(dv.geo_sensor.update_readings())
+# test set flu fence
+NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), 8, LocationLocal(north=1503.35546875,east=-204.7209930419922, down=0) ) for p in rel_geofence_waypoints]
+print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
+
+# # test coneType Sensor
+# target_gen = TargetGenerator(rel_geofence_waypoints)
+# targets = target_gen.generate_targets(1, dv)
+# print(dv.cone_sensor.update_readings([LocationLocal(300,500,0)]))
+
+# # test geofence
+# print(dv.location.local_frame)
+
+# dv.geo_sensor.set_geo_fence(rel_geofence_waypoints)
+
+# print(dv.geo_sensor.update_readings())
 
 
 

@@ -48,7 +48,7 @@ class MyVehicle(Vehicle):
             # if self.location.local_frame.east is not None:
             #     self.local_NED_coordinates = Point(self.location.local_frame.east,  self.location.local_frame.north) # makes testing without SITL easier
             
-            if self.geo_sensor.points:
+            if self.geo_sensor.fencePolygon:
                 self.geo_sensor.update_readings()
             # check if any targets are seen and generate new ones if they are
             s, uns = self.cameraSensor.update_readings(self.environment.targets)
@@ -60,9 +60,9 @@ class MyVehicle(Vehicle):
                 # use this as a flag to determine in which timestamp a target is seen
                 self.target_seen = True
         #Create a message listener for all messages.
-        @self.on_message(['MISSION_ACK', 'COMMAND_ACK', 'MISSION_REQUEST', 'MISSION_CURRENT'])
-        def listener(self, name, message):
-            print( 'message: %s' % message)
+        # @self.on_message(['MISSION_ACK', 'COMMAND_ACK', 'MISSION_REQUEST', 'MISSION_CURRENT'])
+        # def listener(self, name, message):
+        #     print( 'message: %s' % message)
 
 
 
@@ -288,10 +288,14 @@ class MyVehicle(Vehicle):
     def reset(self):
         self.seen_targets = []
         self.initial_heading = self.heading
+        print(self.initial_heading)
         # set the env origin
         self.env_origin = self.location.local_frame
+        print('set env roigin to: {}'.format(NED_to_latlon(self.env_origin, self.home_location)))
+        print('set env roigin to: {}'.format(self.env_origin))
+
         # give the simulation some time to send and receive the mavlink message
-        time.sleep(1)
+        # time.sleep(1)
         # update the home loc on dronekits side
         # after 2 genomes theis starts giving problems (WARNING:autopilot:Mission upload timeout)
         # self.get_home_loc()
