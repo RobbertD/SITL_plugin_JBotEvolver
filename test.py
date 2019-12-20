@@ -44,8 +44,8 @@ dv = DummyVehicle(LocationLocal(400, 400, 0), heading=0)
 # print(latlon)
 
 # test set flu fence
-NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), 8, LocationLocal(north=1503.35546875,east=-204.7209930419922, down=0) ) for p in rel_geofence_waypoints]
-print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
+# NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), 8, LocationLocal(north=1503.35546875,east=-204.7209930419922, down=0) ) for p in rel_geofence_waypoints]
+# print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
 
 # # test coneType Sensor
 # target_gen = TargetGenerator(rel_geofence_waypoints)
@@ -59,7 +59,92 @@ print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NE
 
 # print(dv.geo_sensor.update_readings())
 
+# test NED_TO_FLU
+# loc = NED_to_FLU(LocationLocal(-1,-1,0), 180, LocationLocal(0,0,0))
+# print(loc)
 
 
+import matplotlib.pyplot as plt
+from shapely.affinity import affine_transform, rotate
+from shapely.geometry.point import Point
+east = [
+    14.99973487854,
+12.4080934524536,
+12.4080934524536,
+9.2569637298584,
+-1.37412595748901,
+-1.37412595748901,
+-15.1694641113281,
+-33.4133796691895,
+-54.1238098144531,
+-76.4237518310547,
+-76.4237518310547,
+-99.8973083496094,
+-123.090690612793,
+-123.090690612793,
+-145.377532958984,
+-165.990173339844,
+-184.624603271484,
+-200.609588623047,
+-200.609588623047,
+-212.761047363281,
+-220.940536499023,
+-225.575500488281,
+-226.106521606445,
+-222.575271606445,
+-222.575271606445,
+-214.783050537109,
+-203.63996887207,
+-189.505386352539
 
+]
 
+north =  [
+    379.090393066406,
+    355.915954589844,
+    355.915954589844,
+    332.056121826172,
+    310.091400146484,
+    310.091400146484,
+    289.815948486328,
+    273.724395751953,
+    261.304016113281,
+    252.964111328125,
+    252.964111328125,
+    250.35856628418,
+    251.774307250977,
+    251.774307250977,
+    257.471862792969,
+    267.271514892578,
+    280.200103759766,
+    296.404602050781,
+    296.404602050781,
+    315.633270263672,
+    336.6064453125,
+    358.309539794922,
+    380.101745605469,
+    401.332672119141,
+    401.332672119141,
+    421.14111328125,
+    439.069763183594,
+    454.909118652344
+
+]
+nedpoints = zip(east,north)
+nedpoints = [Point(i) for i in nedpoints]
+
+# 417.0350646972656,east=15.955523490905762
+ref_north= 417.0350646972656
+ref_east=15.955523490905762
+p_translated = [affine_transform(p, [1,0,0,1, -ref_east, -ref_north]) for p in nedpoints]
+p_rotated = [rotate(p, 182, origin=(0,0)) for p in p_translated]
+
+nedpoints= [(p.x,p.y) for p in nedpoints]
+p_translated= [(p.x,p.y) for p in p_translated]
+p_rotated= [(p.x,p.y) for p in p_rotated]
+print(*p_rotated)
+plt.scatter(*zip(*nedpoints),label='ned')
+plt.scatter(*zip(*p_translated), label='trans')
+plt.scatter(*zip(*p_rotated), label='rotated')
+plt.legend()
+plt.show()

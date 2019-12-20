@@ -22,43 +22,35 @@ class MyVehicle(Vehicle):
         self.env_origin = self.location.local_frame
 
         # Setup sensors
-        print('Setting up sensors...')
-        self.geo_sensor = GeoFenceSensor(self, range=200)
-        self.target_sensor = ConeTypeSensor(self, range=500)
-        self.cameraSensor = CameraSensor(self, range=5)
-        self.target_seen = False
-
-            # self.local_NED_coordinates = Point(self.location.local_frame.east,  self.location.local_frame.north) # makes testing without SITL easier
-        # self.geo_sensor.update_readings()
-        # self.get_home_loc()
-        
-
-        self.seen_targets = []
+        # print('Setting up sensors...')
+        # self.geo_sensor = GeoFenceSensor(self, range=200)
+        # self.target_sensor = ConeTypeSensor(self, range=500)
+        # self.cameraSensor = CameraSensor(self, range=5)
+        # self.target_seen = False
+        # self.seen_targets = []
 
         print('MyVehicle Init finished')
-
-        # @self.on_attribute('home_location')
-        # def decorated_mode_callback(self, attr_name, value):
 
     def set_attribute_listeners(self):
         @self.on_attribute('location')   
         def decorated_mode_callback(self, attr_name, value):
+            pass
             # update relative gps-coordinates
             # TODO is needed?
             # if self.location.local_frame.east is not None:
             #     self.local_NED_coordinates = Point(self.location.local_frame.east,  self.location.local_frame.north) # makes testing without SITL easier
             
-            if self.geo_sensor.fencePolygon:
-                self.geo_sensor.update_readings()
-            # check if any targets are seen and generate new ones if they are
-            s, uns = self.cameraSensor.update_readings(self.environment.targets)
-            if len(s)>0:
-                # keep track of the targets this vehicle has seen
-                self.seen_targets.append(s)
-                # update environment with remaining targets
-                self.environment.set_targets(uns)
-                # use this as a flag to determine in which timestamp a target is seen
-                self.target_seen = True
+            # if self.geo_sensor.fencePolygon is not None and self.location.local_frame.north is not None:
+            #     self.geo_sensor.update_readings()
+            # # check if any targets are seen and generate new ones if they are
+            # s, uns = self.cameraSensor.update_readings(self.environment.targets)
+            # if len(s)>0:
+            #     # keep track of the targets this vehicle has seen
+            #     self.seen_targets.append(s)
+            #     # update environment with remaining targets
+            #     self.environment.set_targets(uns)
+            #     # use this as a flag to determine in which timestamp a target is seen
+            #     self.target_seen = True
         #Create a message listener for all messages.
         # @self.on_message(['MISSION_ACK', 'COMMAND_ACK', 'MISSION_REQUEST', 'MISSION_CURRENT'])
         # def listener(self, name, message):
@@ -138,8 +130,8 @@ class MyVehicle(Vehicle):
         print("Taking off!")
         # self.groundspeed=200.0
         while True:
-            print (" Altitude: ", self.location.global_relative_frame.alt)
-            print('System status: %s' % (self.system_status))
+            # print (" Altitude: ", self.location.global_relative_frame.alt)
+            # print('System status: %s' % (self.system_status))
             #Break and return from function just below target altitude.
             if self.location.global_relative_frame.alt>=aTargetAltitude*0.95:
                 print ("Reached target altitude")
@@ -241,19 +233,17 @@ class MyVehicle(Vehicle):
         cmds.add(Command(0,0,0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
                             2, 0, 0, 1, 0, 0,
                             location.lat, location.lon, altitude))
-        print('uploading mission')
-        cmds.upload()
+        # print('uploading mission')
+        cmds.upload(timeout=10)
         # print('sent waypoint location:{}'.format(location))
 
-    # WORKS
     def set_position(self, location, altitude, duration):
-        # self.mode = VehicleMode("GUIDED")
+        self.mode = VehicleMode("GUIDED")
         self.send_position_target(location, altitude)
         # Dont bother with sending the same message multiple times when running in sitl
         # start = time.time()
         # while time.time() - start < duration:
         #     self.send_position_target(location, altitude)
-        #     # TODO create  a constants class
         #     time.sleep(0.05/self.environment.speedup)
         # self.send_position_target(0)
 
@@ -266,7 +256,7 @@ class MyVehicle(Vehicle):
     def control_plane(self, thrust, angle, duration):
         # this shit does work
         #duration is in timesteps
-        coord = on_half_circle(angle, angle_limit=45, r=500)
+        coord = on_half_circle(angle, r=500)
         # print('FLU control coord:{}'.format(coord))
         self.set_FLU_position(coord, 300, duration)
         # Overriding RC was not recommended
@@ -285,19 +275,27 @@ class MyVehicle(Vehicle):
     def get_sensor_readings(self):
         return self.geo_sensor.readings + self.target_sensor.readings
 
+    def get_rel_location(self):
+        # returns location rel to env_origin in x,y coordinates, used when communicating with JBotEvolver
+        
+        loc = NED_to_FLU(self.location.local_frame, self.initial_heading, self.env_origin)
+        
+        # print('{}, {}, {}, {}'.format(self.location.local_frame.east,self.location.local_frame.north, -loc.left, loc.front))
+
+        return -loc.left, loc.front
+
     def reset(self):
-        self.seen_targets = []
+        # self.seen_targets = []
         self.initial_heading = self.heading
-        print(self.initial_heading)
         # set the env origin
         self.env_origin = self.location.local_frame
-        print('set env roigin to: {}'.format(NED_to_latlon(self.env_origin, self.home_location)))
-        print('set env roigin to: {}'.format(self.env_origin))
+        # print('set env roigin to: {}'.format(NED_to_latlon(self.env_origin, self.home_location)))
+        print('set env roigin to: {}, with heading: {}'.format(self.env_origin, self.initial_heading))
 
         # give the simulation some time to send and receive the mavlink message
         # time.sleep(1)
         # update the home loc on dronekits side
         # after 2 genomes theis starts giving problems (WARNING:autopilot:Mission upload timeout)
         # self.get_home_loc()
-        self.geo_sensor.reset_FLU_geo_fence()
+        # self.geo_sensor.reset_FLU_geo_fence()
         self.mode = VehicleMode("GUIDED")

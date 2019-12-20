@@ -72,16 +72,24 @@ def FLU_to_NED(p_FLU: LocationLocalFLU, relative_angle, ref_NED_coordinates: Loc
 
         return LocationLocal(north=p_translated.y, east=p_translated.x, down=p_FLU.up * -1)
 
+def NED_to_FLU(point: LocationLocal, relative_angle, ref_NED_coordinates: LocationLocal):
+        p = Point(point.east, point.north)
+
+        p_translated = affine_transform(p, [1,0,0,1, -ref_NED_coordinates.east, -ref_NED_coordinates.north])
+
+        p_rotated = rotate(p_translated, relative_angle, origin=(0,0))
+        # print(p_rotated)
+
+        return LocationLocalFLU(front=p_rotated.y, left= -p_rotated.x, up=point.down * -1)
+
 def FLU_to_latlon(p: LocationLocalFLU, relative_angle, ref_global_coordinates: Union[LocationGlobal, LocationGlobalRelative]):
         # ref_global_coordinates should be the LocationGlobal of the plane
         p_NED = FLU_to_NED(p, relative_angle, LocationLocal(0,0,0))
         # print('ned coordinates: {}'.format(p_NED))
         return NED_to_latlon(p_NED, ref_global_coordinates)
 
-def on_half_circle(angle, angle_limit, r):
-        # angle should be from -1 to 1, angle limit in degrees (0-90)
-        angle = angle * angle_limit
-        complx = cmath.rect(r, math.radians(angle)) # angle is in radians
+def on_half_circle(angle, r):
+        complx = cmath.rect(r, angle) # angle is in radians
 
         return LocationLocalFLU(complx.real, complx.imag*-1, 0)
 

@@ -45,9 +45,8 @@ class GeoFenceSensor(ConeTypeSensor):
         
     def reset_FLU_geo_fence(self):
         # assuming env_origin is reset right before
-        print(self.__flu_points)
         NED_geofence = [FLU_to_NED(LocationLocalFLU(p[1], p[0], 0), self.owner.initial_heading, self.owner.env_origin) for p in self.__flu_points]
-        print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
+        # print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(NED_geofence[0], NED_geofence[1], NED_geofence[2], NED_geofence[3]))
         latlon_geofence = [NED_to_latlon(g, self.owner.home_location) for g in NED_geofence]
         print('Geofence set with the following coordinates: \n{}\n{}\n{}\n{} '.format(latlon_geofence[0], latlon_geofence[1], latlon_geofence[2], latlon_geofence[3]))
         NED_geofence = [(p.east, p.north) for p in NED_geofence]

@@ -1,0 +1,22 @@
+cycler==0.10.0
+dill==0.3.1.1
+dronekit==2.9.2
+future==0.18.2
+graphviz==0.13.2
+kiwisolver==1.1.0
+lxml==4.4.1
+matplotlib==3.1.2
+monotonic==1.5
+multiprocess==0.70.9
+-e git+https://github.com/RobbertD/neat-python.git@c2b79c88667a1798bfe33c00dd8e251ef8be41fa#egg=my_neat_python
+-e git+https://github.com/RobbertD/neat-python.git@c2b79c88667a1798bfe33c00dd8e251ef8be41fa#egg=neat_python
+numpy==1.17.4
+pathos==0.2.5
+pox==0.2.7
+ppft==1.6.6.1
+pygame==1.9.6
+pymavlink==2.4.0
+pyparsing==2.4.5
+python-dateutil==2.8.1
+Shapely==1.6.4.post2
+six==1.13.0
