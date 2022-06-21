@@ -10,7 +10,7 @@ monotonic==1.5
 multiprocess==0.70.9
 -e git+https://github.com/RobbertD/neat-python.git@c2b79c88667a1798bfe33c00dd8e251ef8be41fa#egg=my_neat_python
 -e git+https://github.com/RobbertD/neat-python.git@c2b79c88667a1798bfe33c00dd8e251ef8be41fa#egg=neat_python
-numpy==1.17.4
+numpy==1.22.0
 pathos==0.2.5
 pox==0.2.7
 ppft==1.6.6.1
